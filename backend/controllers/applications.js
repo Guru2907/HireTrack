@@ -1,6 +1,5 @@
 const Application = require('../models/Application');
 
-// TODO — Plan Phase 1, Step 8: find all applications where user = req.user._id
 exports.getAll = async (req, res) => {
   res.status(501).json({ message: 'getAll not implemented yet' });
 };

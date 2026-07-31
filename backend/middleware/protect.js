@@ -1,11 +1,23 @@
-// const jwt = require('jsonwebtoken');
-// const User = require('../models/User');
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
-// TODO — Plan Phase 1, Step 7:
-// 1. Read token from req.headers.authorization ("Bearer <token>")
-// 2. jwt.verify it with process.env.JWT_SECRET
-// 3. Load the user (minus password) onto req.user
-// 4. next() if valid, 401 if not
 module.exports = async (req, res, next) => {
-  res.status(501).json({ message: 'protect middleware not implemented yet' });
+  try{
+    const authHeader = req.headers.authorization;
+    let token;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    }else{
+      return res.status(401).json({message:"Invalid Request"})
+    }
+
+    const isVerify = await jwt.verify(token,process.env.JWT_SECRET)
+    const Person = await User.findById(isVerify.id)
+
+    req.user = Person;
+    next();
+
+  }catch(err){
+    res.status(401).json({ message: err.message });
+  }
 };
