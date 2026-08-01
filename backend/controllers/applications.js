@@ -12,7 +12,7 @@ exports.getAll = async (req, res) => {
 exports.create = async (req, res) => {
   try{
     const applications = await Application.create({...req.body,user:req.user._id})
-    res.status(201).json({message:"Succesfully Created"})
+    res.status(201).json(applications)
   }catch(err){
     res.status(500).json({ message: err.message });
   }
