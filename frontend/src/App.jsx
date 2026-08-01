@@ -1,6 +1,8 @@
 import { Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 
+import Navbar from './components/Navbar';
+
 import LandingPage from './pages/public/LandingPage';
 import LoginPage from './pages/public/LoginPage';
 import SignupPage from './pages/public/SignupPage';
@@ -13,6 +15,8 @@ import ProfilePage from './pages/private/ProfilePage';
 
 export default function App() {
   return (
+  <>
+    <Navbar/>
     <Routes>
       {/* Public */}
       <Route path="/" element={<LandingPage />} />
@@ -27,5 +31,6 @@ export default function App() {
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
+  </>
   );
 }
