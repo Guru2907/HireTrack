@@ -11,7 +11,7 @@ import NotFoundPage from './pages/public/NotFoundPage';
 import DashboardPage from './pages/private/DashboardPage';
 import ApplicationsPage from './pages/private/ApplicationsPage';
 import ResumeMatcherPage from './pages/private/ResumeMatcherPage';
-import ProfilePage from './pages/private/ProfilePage';
+import ResumesPage from './pages/private/ResumesPage';
 
 export default function App() {
   return (
@@ -27,7 +27,7 @@ export default function App() {
       <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
       <Route path="/applications" element={<ProtectedRoute><ApplicationsPage /></ProtectedRoute>} />
       <Route path="/matcher" element={<ProtectedRoute><ResumeMatcherPage /></ProtectedRoute>} />
-      <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+      <Route path="/resumes" element={<ProtectedRoute><ResumesPage /></ProtectedRoute>} />
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

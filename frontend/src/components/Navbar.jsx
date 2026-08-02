@@ -13,7 +13,7 @@ export default function Navbar() {
             <Link to="/dashboard">Dashboard</Link>
             <Link to="/applications">Applications</Link>
             <Link to="/matcher">Matcher</Link>
-            <Link to="/profile">Profile</Link>
+            <Link to="/resumes">Resumes</Link>
             <button onClick={logout}>Logout</button>
           </>
         ) : (
