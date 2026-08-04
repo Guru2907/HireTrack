@@ -1,9 +1,6 @@
-import axios from 'axios';
-const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-const getToken = () => localStorage.getItem('token');
-const headers = () => ({ headers: { Authorization: `Bearer ${getToken()}` } });
+import axiosClient from './axiosClient';
 
-export const getAllApplications = () => axios.get(`${BASE}/applications`, headers());
-export const createApplication = (data) => axios.post(`${BASE}/applications`, data, headers());
-export const updateApplication = (id, data) => axios.put(`${BASE}/applications/${id}`, data, headers());
-export const deleteApplication = (id) => axios.delete(`${BASE}/applications/${id}`, headers());
+export const getAllApplications = () => axiosClient.get('/applications');
+export const createApplication = (data) => axiosClient.post('/applications', data);
+export const updateApplication = (id, data) => axiosClient.put(`/applications/${id}`, data);
+export const deleteApplication = (id) => axiosClient.delete(`/applications/${id}`);

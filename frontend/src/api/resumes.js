@@ -1,8 +1,5 @@
-import axios from 'axios';
-const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-const getToken = () => localStorage.getItem('token');
-const headers = () => ({ headers: { Authorization: `Bearer ${getToken()}` } });
+import axiosClient from './axiosClient';
 
-export const getResumes = () => axios.get(`${BASE}/resumes`, headers());
-export const addResume = (data) => axios.post(`${BASE}/resumes`, data, headers());
-export const deleteResume = (id) => axios.delete(`${BASE}/resumes/${id}`, headers());
+export const getResumes = () => axiosClient.get(`/resumes`);
+export const addResume = (data) => axiosClient.post(`/resumes`, data);
+export const deleteResume = (id) => axiosClient.delete(`/resumes/${id}`);
