@@ -3,6 +3,7 @@ export default function Button({ children, onClick, type = 'button', variant = '
   const variants = {
     primary: 'bg-blue-600 text-white hover:bg-blue-700',
     secondary: 'bg-gray-200 text-gray-800 hover:bg-gray-300',
+    closing: 'bg-red-400 text-black hover:bg-red-600'
   };
   return (
     <button type={type} onClick={onClick} className={`${base} ${variants[variant]}`}>
