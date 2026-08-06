@@ -3,6 +3,7 @@ import { getResumes } from "../../api/resumes";
 import { matchResume as matchResumeApi } from "../../api/match";
 import Textarea from "../../components/Textarea";
 import Button from "../../components/Button";
+import SkeletonMatcher from "../../components/SkeletonMatcher";
 
 export default function ResumeMatcherPage() {
   const [resumes, setResumes] = useState([]);
@@ -13,18 +14,20 @@ export default function ResumeMatcherPage() {
   const [result, setResult] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    getResumes()
-      .then((res) => {
-        setResumes(res.data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        setErr(err.response?.data?.message || "Something went wrong");
-        setLoading(false);
-      });
-  }, []);
+  
+useEffect(() => {
+  const minDelay = new Promise((resolve) => setTimeout(resolve, 1000));
+  Promise.all([getResumes(), minDelay])
+    .then(([res]) => {
+      setResumes(res.data);
+      setLoading(false);
+    })
+    .catch((err) => {
+      console.error(err);
+      setErr(err.response?.data?.message || "Something went wrong");
+      setLoading(false);
+    });
+}, []);
 
   useEffect(() => {
     if (resumes.length > 0) {
@@ -44,7 +47,7 @@ export default function ResumeMatcherPage() {
   }, [result]);
 
   if (loading) {
-    return <div className="p-6">Loading...</div>;
+  return <SkeletonMatcher />;
   }
 
   const matchResume = async (e) => {

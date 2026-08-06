@@ -3,6 +3,7 @@ import { getResumes, addResume, deleteResume, updateResume } from "../../api/res
 import Button from "../../components/Button";
 import Input from "../../components/Input";
 import Textarea from "../../components/Textarea";
+import SkeletonResumeRow from "../../components/SkeletonResumeRow";
 
 export default function ResumesPage() {
   const [resumes, setResumes] = useState([]);
@@ -12,22 +13,30 @@ export default function ResumesPage() {
   const [err, setErr] = useState("");
   const [editingId, setEditingId] = useState(null);
 
-  useEffect(() => {
-    getResumes()
-      .then((res) => {
-        setResumes(res.data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        setErr(err.response?.data?.message || "Something went wrong");
-        setLoading(false);
-      });
-  }, []);
+  
+useEffect(() => {
+  const minDelay = new Promise((resolve) => setTimeout(resolve, 1000));
+  Promise.all([getResumes(), minDelay])
+    .then(([res]) => {
+      setResumes(res.data);
+      setLoading(false);
+    })
+    .catch((err) => {
+      console.error(err);
+      setErr(err.response?.data?.message || "Something went wrong");
+      setLoading(false);
+    });
+}, []);
 
-  if (loading) {
-    return <div className="p-6">Loading...</div>;
-  }
+if (loading) {
+  return (
+    <div className="max-w-2xl mx-auto px-6 py-10">
+      <div className="border border-gray-200 rounded-xl px-4 divide-y divide-gray-100">
+        {[1, 2, 3].map((i) => <SkeletonResumeRow key={i} />)}
+      </div>
+    </div>
+  );
+}
 
   const handleEditClick = (resume) => {
     setLabel(resume.label);

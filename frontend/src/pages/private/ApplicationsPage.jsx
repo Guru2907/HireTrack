@@ -8,6 +8,7 @@ import {
 import ApplicationCard from "../../components/ApplicationCard";
 import Button from "../../components/Button";
 import Input from "../../components/Input";
+import SkeletonApplicationCard from "../../components/SkeletonApplicationCard";
 
 export default function ApplicationsPage() {
   const [applications, setApplications] = useState([]);
@@ -22,17 +23,19 @@ export default function ApplicationsPage() {
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState("Choose your status");
 
-  useEffect(() => {
-    getAllApplications()
-      .then((res) => {
-        setApplications(res.data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        setLoading(false);
-      });
-  }, []);
+  
+useEffect(() => {
+  const minDelay = new Promise((resolve) => setTimeout(resolve, 1000));
+  Promise.all([getAllApplications(), minDelay])
+    .then(([res]) => {
+      setApplications(res.data);
+      setLoading(false);
+    })
+    .catch((err) => {
+      console.error(err);
+      setLoading(false);
+    });
+}, []);
 
   useEffect(() => {
     if (editingApplication) {
@@ -51,8 +54,12 @@ export default function ApplicationsPage() {
   }, [editingApplication]);
 
   if (loading) {
-    return <div className="p-6">Loading...</div>;
-  }
+  return (
+    <div className="max-w-4xl mx-auto px-6 py-10 space-y-4">
+      {[1, 2, 3].map((i) => <SkeletonApplicationCard key={i} />)}
+    </div>
+  );
+}
 
   const resetForm = () => {
     setCompany("");

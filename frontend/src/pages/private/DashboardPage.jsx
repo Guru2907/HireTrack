@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getAllApplications } from "../../api/applications";
+import SkeletonDashboard from "../../components/SkeletonDashboard";
 import {
   PieChart,
   Pie,
@@ -25,21 +26,23 @@ export default function DashboardPage() {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    getAllApplications()
-      .then((res) => {
-        setApplications(res.data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        setLoading(false);
-      });
-  }, []);
+  
+useEffect(() => {
+  const minDelay = new Promise((resolve) => setTimeout(resolve, 1000));
+  Promise.all([getAllApplications(), minDelay])
+    .then(([res]) => {
+      setApplications(res.data);
+      setLoading(false);
+    })
+    .catch((err) => {
+      console.error(err);
+      setLoading(false);
+    });
+}, []);
 
-  if (loading) {
-    return <div className="p-6">Loading...</div>;
-  }
+if (loading) {
+  return <SkeletonDashboard />;
+}
 
   const chartData = STATUS_LIST.map((status) => ({
     name: status,
