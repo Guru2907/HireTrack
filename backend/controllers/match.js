@@ -23,6 +23,15 @@ Rules:
 - suggestions should contain exactly 3 items, except in the two special cases described above.
 `;
 
+// Testing Function Only
+function isValidMatchResult(parsed) {
+  const scoreValid = typeof parsed?.score === 'number' && parsed.score >= 0 && parsed.score <= 100;
+  const keywordsValid = Array.isArray(parsed?.missingKeywords);
+  const suggestionsValid = Array.isArray(parsed?.suggestions);
+  return scoreValid && keywordsValid && suggestionsValid;
+}
+exports.isValidMatchResult = isValidMatchResult;
+
 exports.matchResume = async (req, res) => {
   const { resumeText, jobDescription } = req.body;
 
@@ -68,11 +77,8 @@ ${jobDescription}
     });
   }
 
-  const scoreValid = typeof parsed.score === 'number' && parsed.score >= 0 && parsed.score <= 100;
-  const keywordsValid = Array.isArray(parsed.missingKeywords);
-  const suggestionsValid = Array.isArray(parsed.suggestions);
-
-  if (!scoreValid || !keywordsValid || !suggestionsValid) {
+  // Replaces the old three separate ...Valid lines + if check
+  if (!isValidMatchResult(parsed)) {
     return res.status(502).json({
       message: 'The AI returned a response in an unexpected format. Please try again.',
     });

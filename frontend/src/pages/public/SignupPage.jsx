@@ -11,8 +11,6 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
   const navigate = useNavigate();
-  const { login } = useAuth();
-
   const { login, isLoggedIn } = useAuth();
 
   useEffect(() => {
