@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getResumes, addResume, deleteResume } from "../../api/resumes";
+import { getResumes, addResume, deleteResume, updateResume } from "../../api/resumes";
 import Button from "../../components/Button";
 import Input from "../../components/Input";
 import Textarea from "../../components/Textarea";
@@ -10,6 +10,7 @@ export default function ResumesPage() {
   const [label, setLabel] = useState("");
   const [text, setText] = useState("");
   const [err, setErr] = useState("");
+  const [editingId, setEditingId] = useState(null);
 
   useEffect(() => {
     getResumes()
@@ -28,12 +29,27 @@ export default function ResumesPage() {
     return <div className="p-6">Loading...</div>;
   }
 
-  const createResumes = async (e) => {
+  const handleEditClick = (resume) => {
+    setLabel(resume.label);
+    setText(resume.text);
+    setEditingId(resume._id);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
     try {
       const data = { label, text };
-      const res = await addResume(data);
-      setResumes(res.data);
+
+      if (editingId) {
+        const res = await updateResume(editingId, data);
+        setResumes(res.data);
+        setEditingId(null);
+      } else {
+        const res = await addResume(data);
+        setResumes(res.data);
+      }
+
       setLabel("");
       setText("");
     } catch (err) {
@@ -67,24 +83,55 @@ export default function ResumesPage() {
         </div>
       )}
 
-      <form onSubmit={createResumes} className="mb-10">
-        <Input
-          type="text"
-          name="label"
-          label="Label"
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          placeholder="e.g. SDE Resume v1"
-        />
-        <Textarea
-          name="text"
-          label="Resume Text"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Paste your resume text here"
-        />
-        <Button type="submit">Save Resume</Button>
-      </form>
+      <div
+        className={`rounded-xl p-6 mb-10 border transition-colors ${
+          editingId
+            ? "border-blue-300 bg-blue-50/40"
+            : "border-gray-200 bg-white"
+        }`}
+      >
+        <h2 className="font-semibold text-gray-900 mb-4">
+          {editingId ? "Editing Resume" : "Add a Resume"}
+        </h2>
+
+        <form onSubmit={handleFormSubmit}>
+          <Input
+            type="text"
+            name="label"
+            label="Label"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="e.g. SDE Resume v1"
+          />
+          <Textarea
+            name="text"
+            label="Resume Text"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Paste your resume text here"
+            rows={12}
+          />
+          <div className="flex gap-3">
+            <Button type="submit">
+              {editingId ? "Update Resume" : "Save Resume"}
+            </Button>
+
+            {editingId && (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setEditingId(null);
+                  setLabel("");
+                  setText("");
+                }}
+              >
+                Cancel Edit
+              </Button>
+            )}
+          </div>
+        </form>
+      </div>
 
       <div className="border border-gray-200 rounded-xl px-4 divide-y divide-gray-100">
         {resumes.map((resume) => {
@@ -92,11 +139,14 @@ export default function ResumesPage() {
             (new Date() - new Date(resume.uploadedAt)) / (1000 * 60 * 60 * 24)
           );
           const addedLabel = daysAgo === 0 ? "Added today" : `Added ${daysAgo}d ago`;
+          const isBeingEdited = editingId === resume._id;
 
           return (
             <div
               key={resume._id}
-              className="group flex items-center justify-between py-4"
+              className={`group flex items-center justify-between py-4 transition-colors ${
+                isBeingEdited ? "bg-blue-50/40 -mx-4 px-4" : ""
+              }`}
             >
               <div className="flex items-center gap-3">
                 <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="text-gray-400 shrink-0">
@@ -105,15 +155,26 @@ export default function ResumesPage() {
                 </svg>
                 <div>
                   <p className="text-gray-900 font-medium">{resume.label}</p>
-                  <p className="text-xs text-gray-400 font-mono">{addedLabel}</p>
+                  <p className="text-xs text-gray-400 font-mono">
+                    {isBeingEdited ? "Currently editing" : addedLabel}
+                  </p>
                 </div>
               </div>
-              <button
-                onClick={() => deleteResumes(resume._id)}
-                className="text-sm text-red-500 opacity-0 group-hover:opacity-100 transition"
-              >
-                Delete
-              </button>
+
+              <div className="flex gap-4">
+                <button
+                  onClick={() => handleEditClick(resume)}
+                  className="text-sm text-blue-500 opacity-0 group-hover:opacity-100 transition"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => deleteResumes(resume._id)}
+                  className="text-sm text-red-500 opacity-0 group-hover:opacity-100 transition"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           );
         })}
