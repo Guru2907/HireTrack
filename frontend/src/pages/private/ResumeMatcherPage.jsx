@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { getResumes } from "../../api/resumes";
 import { matchResume as matchResumeApi } from "../../api/match";
+import { Link } from "react-router-dom";
 import Textarea from "../../components/Textarea";
 import Button from "../../components/Button";
-import SkeletonMatcher from "../../components/SkeletonMatcher";
 
 export default function ResumeMatcherPage() {
   const [resumes, setResumes] = useState([]);
@@ -14,20 +14,18 @@ export default function ResumeMatcherPage() {
   const [result, setResult] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  
-useEffect(() => {
-  const minDelay = new Promise((resolve) => setTimeout(resolve, 500));
-  Promise.all([getResumes(), minDelay])
-    .then(([res]) => {
-      setResumes(res.data);
-      setLoading(false);
-    })
-    .catch((err) => {
-      console.error(err);
-      setErr(err.response?.data?.message || "Something went wrong");
-      setLoading(false);
-    });
-}, []);
+  useEffect(() => {
+    getResumes()
+      .then((res) => {
+        setResumes(res.data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error(err);
+        setErr(err.response?.data?.message || "Something went wrong");
+        setLoading(false);
+      });
+  }, []);
 
   useEffect(() => {
     if (resumes.length > 0) {
@@ -38,16 +36,12 @@ useEffect(() => {
 
   useEffect(() => {
     if (!result) return;
-
-    const timer = setTimeout(() => {
-      setResult(null);
-    }, 60000);
-
+    const timer = setTimeout(() => setResult(null), 60000);
     return () => clearTimeout(timer);
   }, [result]);
 
   if (loading) {
-  return <SkeletonMatcher />;
+    return <div className="p-6">Loading...</div>;
   }
 
   const matchResume = async (e) => {
@@ -72,6 +66,15 @@ useEffect(() => {
     setJobDesc("");
   };
 
+  const scoreColor = (score) => {
+    if (score >= 70) return "text-green-600";
+    if (score >= 40) return "text-orange-500";
+    return "text-red-500";
+  };
+
+  const jdTooShort = jobDesc.trim().length > 0 && jobDesc.trim().length < 40;
+  const noResumes = resumes.length === 0;
+
   return (
     <div className={`mx-auto px-6 py-10 transition-all duration-500 ${
       result ? "max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-8 items-start" : "max-w-2xl"
@@ -86,48 +89,65 @@ useEffect(() => {
           </div>
         )}
 
-        <form onSubmit={matchResume} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Resume</label>
-            <select
-              value={selectedResumeId}
-              onChange={(e) => setSelectedResumeId(e.target.value)}
-              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {resumes.map((resume) => (
-                <option key={resume._id} value={resume._id}>{resume.label}</option>
-              ))}
-            </select>
+        {noResumes ? (
+          <div className="bg-orange-50 border border-orange-200 text-orange-700 text-sm rounded-lg px-4 py-4">
+            You don't have any saved resumes yet.{" "}
+            <Link to="/resumes" className="underline font-medium">Add one first</Link>{" "}
+            to run a match.
           </div>
+        ) : (
+          <form onSubmit={matchResume} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Resume</label>
+              <select
+                value={selectedResumeId}
+                onChange={(e) => setSelectedResumeId(e.target.value)}
+                className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {resumes.map((resume) => (
+                  <option key={resume._id} value={resume._id}>{resume.label}</option>
+                ))}
+              </select>
+            </div>
 
-          <Textarea
-            name="text"
-            label="Job Description"
-            value={jobDesc}
-            onChange={(e) => setJobDesc(e.target.value)}
-            placeholder="Paste your job description here"
-          />
+            <div>
+              <Textarea
+                name="text"
+                label="Job Description"
+                value={jobDesc}
+                onChange={(e) => setJobDesc(e.target.value)}
+                placeholder="Paste your job description here"
+              />
+              <div className="flex justify-between mt-1">
+                <p className={`text-xs ${jdTooShort ? "text-orange-500" : "text-gray-400"}`}>
+                  {jdTooShort
+                    ? "This looks short for a real job description — results may be inaccurate."
+                    : `${jobDesc.trim().length} characters`}
+                </p>
+              </div>
+            </div>
 
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                Analyzing...
-              </span>
-            ) : (
-              "Run Match"
-            )}
-          </Button>
-        </form>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Analyzing...
+                </span>
+              ) : (
+                "Run Match"
+              )}
+            </Button>
+          </form>
+        )}
       </div>
 
       {result && (
         <div className="border border-gray-200 rounded-xl p-6 bg-white shadow-sm">
           <div className="flex items-baseline gap-2 mb-6">
-            <span className="text-5xl font-bold text-gray-900">{result.score}</span>
+            <span className={`text-5xl font-bold ${scoreColor(result.score)}`}>{result.score}</span>
             <span className="text-gray-400 text-lg">/ 100 match</span>
           </div>
 
@@ -135,11 +155,15 @@ useEffect(() => {
             Missing Keywords
           </h3>
           <div className="flex flex-wrap gap-2 mb-8">
-            {result.missingKeywords.map((keyword) => (
-              <span key={keyword} className="text-xs bg-orange-100 text-orange-700 px-2.5 py-1 rounded-full font-medium">
-                {keyword}
-              </span>
-            ))}
+            {result.missingKeywords.length === 0 ? (
+              <p className="text-sm text-gray-400">None — good coverage.</p>
+            ) : (
+              result.missingKeywords.map((keyword) => (
+                <span key={keyword} className="text-xs bg-orange-100 text-orange-700 px-2.5 py-1 rounded-full font-medium">
+                  {keyword}
+                </span>
+              ))
+            )}
           </div>
 
           <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
