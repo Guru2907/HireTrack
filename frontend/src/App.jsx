@@ -12,6 +12,7 @@ import DashboardPage from './pages/private/DashboardPage';
 import ApplicationsPage from './pages/private/ApplicationsPage';
 import ResumeMatcherPage from './pages/private/ResumeMatcherPage';
 import ResumesPage from './pages/private/ResumesPage';
+import ProfilePage from './pages/private/ProfilePage';
 
 export default function App() {
   return (
@@ -28,7 +29,7 @@ export default function App() {
       <Route path="/applications" element={<ProtectedRoute><ApplicationsPage /></ProtectedRoute>} />
       <Route path="/matcher" element={<ProtectedRoute><ResumeMatcherPage /></ProtectedRoute>} />
       <Route path="/resumes" element={<ProtectedRoute><ResumesPage /></ProtectedRoute>} />
-
+      <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   </>
