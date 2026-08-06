@@ -33,7 +33,12 @@ export default function ResumesPage() {
     setLabel(resume.label);
     setText(resume.text);
     setEditingId(resume._id);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const closeEdit = () => {
+    setEditingId(null);
+    setLabel("");
+    setText("");
   };
 
   const handleFormSubmit = async (e) => {
@@ -44,14 +49,13 @@ export default function ResumesPage() {
       if (editingId) {
         const res = await updateResume(editingId, data);
         setResumes(res.data);
-        setEditingId(null);
+        closeEdit();
       } else {
         const res = await addResume(data);
         setResumes(res.data);
+        setLabel("");
+        setText("");
       }
-
-      setLabel("");
-      setText("");
     } catch (err) {
       setErr(err.response?.data?.message || "Something went wrong");
     }
@@ -83,55 +87,71 @@ export default function ResumesPage() {
         </div>
       )}
 
-      <div
-        className={`rounded-xl p-6 mb-10 border transition-colors ${
-          editingId
-            ? "border-blue-300 bg-blue-50/40"
-            : "border-gray-200 bg-white"
-        }`}
-      >
-        <h2 className="font-semibold text-gray-900 mb-4">
-          {editingId ? "Editing Resume" : "Add a Resume"}
-        </h2>
+      {editingId ? (
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-50 flex items-center justify-center p-6"
+          onClick={closeEdit}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl w-full max-w-3xl h-[90vh] flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center px-8 py-5 border-b border-gray-100">
+              <h2 className="font-semibold text-lg text-gray-900">Editing Resume</h2>
+              <button onClick={closeEdit} className="text-gray-400 hover:text-gray-600">
+                ✕
+              </button>
+            </div>
 
-        <form onSubmit={handleFormSubmit}>
-          <Input
-            type="text"
-            name="label"
-            label="Label"
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            placeholder="e.g. SDE Resume v1"
-          />
-          <Textarea
-            name="text"
-            label="Resume Text"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Paste your resume text here"
-            rows={12}
-          />
-          <div className="flex gap-3">
-            <Button type="submit">
-              {editingId ? "Update Resume" : "Save Resume"}
-            </Button>
-
-            {editingId && (
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  setEditingId(null);
-                  setLabel("");
-                  setText("");
-                }}
-              >
-                Cancel Edit
-              </Button>
-            )}
+            <form onSubmit={handleFormSubmit} className="flex flex-col flex-1 px-8 py-6 overflow-y-auto">
+              <Input
+                type="text"
+                name="label"
+                label="Label"
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder="e.g. SDE Resume v1"
+              />
+              <div className="flex-1 flex flex-col mb-4">
+                <label className="block text-sm font-medium mb-1">Resume Text</label>
+                <textarea
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  className="w-full flex-1 border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                />
+              </div>
+              <div className="flex gap-3">
+                <Button type="submit">Update Resume</Button>
+                <Button type="button" variant="secondary" onClick={closeEdit}>
+                  Cancel Edit
+                </Button>
+              </div>
+            </form>
           </div>
-        </form>
-      </div>
+        </div>
+      ) : (
+        <div className="rounded-xl p-6 mb-10 border border-gray-200 bg-white">
+          <h2 className="font-semibold text-gray-900 mb-4">Add a Resume</h2>
+          <form onSubmit={handleFormSubmit}>
+            <Input
+              type="text"
+              name="label"
+              label="Label"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="e.g. SDE Resume v1"
+            />
+            <Textarea
+              name="text"
+              label="Resume Text"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Paste your resume text here"
+            />
+            <Button type="submit">Save Resume</Button>
+          </form>
+        </div>
+      )}
 
       <div className="border border-gray-200 rounded-xl px-4 divide-y divide-gray-100">
         {resumes.map((resume) => {
@@ -139,15 +159,9 @@ export default function ResumesPage() {
             (new Date() - new Date(resume.uploadedAt)) / (1000 * 60 * 60 * 24)
           );
           const addedLabel = daysAgo === 0 ? "Added today" : `Added ${daysAgo}d ago`;
-          const isBeingEdited = editingId === resume._id;
 
           return (
-            <div
-              key={resume._id}
-              className={`group flex items-center justify-between py-4 transition-colors ${
-                isBeingEdited ? "bg-blue-50/40 -mx-4 px-4" : ""
-              }`}
-            >
+            <div key={resume._id} className="group flex items-center justify-between py-4">
               <div className="flex items-center gap-3">
                 <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="text-gray-400 shrink-0">
                   <path d="M4 1.5h7l3 3v10.5a1 1 0 01-1 1H4a1 1 0 01-1-1v-12.5a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.3"/>
@@ -155,9 +169,7 @@ export default function ResumesPage() {
                 </svg>
                 <div>
                   <p className="text-gray-900 font-medium">{resume.label}</p>
-                  <p className="text-xs text-gray-400 font-mono">
-                    {isBeingEdited ? "Currently editing" : addedLabel}
-                  </p>
+                  <p className="text-xs text-gray-400 font-mono">{addedLabel}</p>
                 </div>
               </div>
 
