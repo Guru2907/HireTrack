@@ -25,7 +25,7 @@ export default function ApplicationsPage() {
 
   
 useEffect(() => {
-  const minDelay = new Promise((resolve) => setTimeout(resolve, 1000));
+  const minDelay = new Promise((resolve) => setTimeout(resolve, 500));
   Promise.all([getAllApplications(), minDelay])
     .then(([res]) => {
       setApplications(res.data);

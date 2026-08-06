@@ -16,7 +16,7 @@ export default function ResumeMatcherPage() {
 
   
 useEffect(() => {
-  const minDelay = new Promise((resolve) => setTimeout(resolve, 1000));
+  const minDelay = new Promise((resolve) => setTimeout(resolve, 500));
   Promise.all([getResumes(), minDelay])
     .then(([res]) => {
       setResumes(res.data);
