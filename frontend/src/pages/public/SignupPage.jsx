@@ -10,6 +10,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const { login, isLoggedIn } = useAuth();
 
@@ -22,12 +23,15 @@ export default function SignupPage() {
   const handleSignup = async (e) => {
     e.preventDefault();
     setErr("");
+    setIsSubmitting(true);
     try {
       const res = await signup({ name, email, password });
       login(res.data.token, res.data.name);
       navigate("/dashboard");
     } catch (err) {
       setErr(err.response?.data?.message || "Something went wrong");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -72,8 +76,18 @@ export default function SignupPage() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
           />
-          <Button type="submit" className="w-full mt-2">
-            Sign Up
+          <Button type="submit" disabled={isSubmitting} className="w-full mt-2">
+            {isSubmitting ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Creating account — this can take up to a minute on first load...
+              </span>
+            ) : (
+              "Sign Up"
+            )}
           </Button>
         </form>
 
