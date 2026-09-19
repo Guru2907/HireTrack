@@ -2,10 +2,6 @@
 
 A full-stack MERN job application tracker with AI-powered resume matching, built to go beyond a basic CRUD tracker with real analytics, security hardening, and a tested backend.
 
-**Live:** [hiretrack-black.vercel.app](https://hiretrack-black.vercel.app)
-
-**API:** [hiretrack-kvce.onrender.com](https://hiretrack-kvce.onrender.com) 
-(spins down when idle — first request may take up to a minute)
 ## Features
 
 - **Authentication** — Signup/login with JWT (7-day expiry) and bcrypt password hashing (cost factor 12). All data is scoped per-user at the query level (every Mongoose query filters by `user: req.user._id`), so users can only ever see or modify their own records.
