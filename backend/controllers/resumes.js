@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const User = require("../models/User");
 const { PDFParse } = require('pdf-parse');
 
@@ -39,28 +40,35 @@ exports.getResumes = async (req,res) => {
 
 exports.updateResume = async (req, res) => {
   try {
-    const userId = req.user.id;
     const resumeId = req.params.id;
-    const { title, content } = req.body;
+    const { label, text } = req.body;
 
-    const updatedUser = await User.findOneAndUpdate(
-      { _id: userId, "resumes._id": resumeId },
-      { 
-        $set: { 
-          "resumes.$.title": title,
-          "resumes.$.content": content
-        } 
-      },
-      { new: true }
-    );
-
-    if (!updatedUser) {
-      return res.status(404).json({ message: "User or Resume not found" });
+    if (!mongoose.isValidObjectId(resumeId)) {
+      return res.status(400).json({ message: "Invalid resume id" });
+    }
+    if (typeof label !== "string" || !label.trim() || typeof text !== "string" || !text.trim()) {
+      return res.status(400).json({ message: "Both a label and resume text are required" });
     }
 
-    res.status(200).json(updatedUser);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    // Scoped to the logged-in user: another user's resume id simply won't match.
+    const updatedUser = await User.findOneAndUpdate(
+      { _id: req.user._id, "resumes._id": resumeId },
+      {
+        $set: {
+          "resumes.$.label": label.trim(),
+          "resumes.$.text": text.trim(),
+        },
+      },
+      { new: true },
+    ).select("resumes");
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "Resume not found" });
+    }
+
+    res.status(200).json(updatedUser.resumes);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 

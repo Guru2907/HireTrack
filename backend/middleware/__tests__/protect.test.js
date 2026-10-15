@@ -43,11 +43,24 @@ describe('protect middleware', () => {
     req.headers.authorization = 'Bearer validtoken';
     jwt.verify.mockReturnValue({ id: 'user123' });
     const fakeUser = { _id: 'user123', name: 'Sam' };
-    User.findById.mockResolvedValue(fakeUser);
+    const select = jest.fn().mockResolvedValue(fakeUser);
+    User.findById.mockReturnValue({ select });
 
     await protect(req, res, next);
 
+    expect(select).toHaveBeenCalledWith('-password -resumes');
     expect(req.user).toEqual(fakeUser);
     expect(next).toHaveBeenCalled();
+  });
+
+  test('rejects a valid token whose user no longer exists', async () => {
+    req.headers.authorization = 'Bearer validtoken';
+    jwt.verify.mockReturnValue({ id: 'deleted123' });
+    User.findById.mockReturnValue({ select: jest.fn().mockResolvedValue(null) });
+
+    await protect(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(next).not.toHaveBeenCalled();
   });
 });

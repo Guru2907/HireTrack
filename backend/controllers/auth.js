@@ -64,8 +64,8 @@ exports.updateProfile = async (req, res) => {
       req.user._id,
       { name: name.trim() },
       { new: true }
-    ).select('-password');
-    res.status(200).json(updatedUser);
+    ).select('name');
+    res.status(200).json({ name: updatedUser.name });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
