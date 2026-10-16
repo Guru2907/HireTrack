@@ -17,7 +17,6 @@ exports.create = asyncHandler(async (req, res) => {
   res.status(201).json(application);
 });
 
-// TODO — Plan Phase 3: emit Socket.io 'statusUpdate' event
 exports.update = asyncHandler(async (req, res) => {
   const application = await Application.findOneAndUpdate(
     { _id: req.params.id, user: req.user._id },
