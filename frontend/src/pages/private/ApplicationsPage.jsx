@@ -21,7 +21,7 @@ export default function ApplicationsPage() {
   const [role, setRole] = useState("");
   const [jobUrl, setJobUrl] = useState("");
   const [notes, setNotes] = useState("");
-  const [status, setStatus] = useState("Choose your status");
+  const [status, setStatus] = useState("Applied");
 
   
 useEffect(() => {
@@ -41,15 +41,15 @@ useEffect(() => {
     if (editingApplication) {
       setCompany(editingApplication.company);
       setRole(editingApplication.role);
-      setJobUrl(editingApplication.jobUrl);
-      setNotes(editingApplication.notes);
+      setJobUrl(editingApplication.jobUrl || "");
+      setNotes(editingApplication.notes || "");
       setStatus(editingApplication.status);
     } else {
       setCompany("");
       setRole("");
       setJobUrl("");
       setNotes("");
-      setStatus("Choose your status");
+      setStatus("Applied");
     }
   }, [editingApplication]);
 
@@ -66,7 +66,7 @@ useEffect(() => {
     setRole("");
     setJobUrl("");
     setNotes("");
-    setStatus("Choose your status");
+    setStatus("Applied");
   };
 
   const closeForms = () => {
@@ -112,8 +112,8 @@ useEffect(() => {
       onSubmit={createNewApplication}
       className="border border-gray-200 rounded-xl p-5 bg-gray-50 mb-4"
     >
-      <Input type="text" name="company" label="Company" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Enter the company name" />
-      <Input type="text" name="role" label="Role" value={role} onChange={(e) => setRole(e.target.value)} placeholder="Enter your role offered" />
+      <Input type="text" name="company" label="Company" required value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Enter the company name" />
+      <Input type="text" name="role" label="Role" required value={role} onChange={(e) => setRole(e.target.value)} placeholder="Enter your role offered" />
       <Input type="url" name="jobUrl" label="Job URL" value={jobUrl} onChange={(e) => setJobUrl(e.target.value)} placeholder="Enter the URL" />
       <Input type="text" name="notes" label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Enter your notes here" />
       <div className="mb-4">
@@ -123,7 +123,6 @@ useEffect(() => {
           onChange={(e) => setStatus(e.target.value)}
           className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option value="Choose your status">Choose your status</option>
           <option value="Applied">Applied</option>
           <option value="Interview">Interview</option>
           <option value="Offer">Offer</option>

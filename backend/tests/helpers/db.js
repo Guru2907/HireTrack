@@ -1,6 +1,8 @@
 // Connects a test file to the shared in-memory MongoDB started in tests/globalSetup.js.
 // Call these from beforeAll / afterEach / afterAll.
 const mongoose = require('mongoose');
+const User = require('../../models/User');
+const Application = require('../../models/Application');
 
 exports.connect = async () => {
   const uri = process.env.TEST_MONGO_URI;
@@ -11,6 +13,8 @@ exports.connect = async () => {
   // A separate database per test file, so parallel workers never share data.
   const dbName = `test_${process.env.JEST_WORKER_ID}_${Date.now()}`;
   await mongoose.connect(uri, { dbName });
+  // Build the schema indexes (e.g. the unique email index) before any test relies on them.
+  await Promise.all([User.init(), Application.init()]);
 };
 
 exports.clear = async () => {

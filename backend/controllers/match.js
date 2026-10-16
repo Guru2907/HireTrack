@@ -23,23 +23,24 @@ Rules:
 - suggestions should contain exactly 3 items, except in the two special cases described above.
 `;
 
-// Testing Function Only
+// Checks the model's reply before the frontend renders it: an integer score and arrays of plain strings.
+// (A non-string array item would otherwise crash the React results panel.)
+const MAX_LIST_ITEMS = 100;
+const MAX_ITEM_LENGTH = 1000;
+const isStringList = (value) =>
+  Array.isArray(value) &&
+  value.length <= MAX_LIST_ITEMS &&
+  value.every((item) => typeof item === 'string' && item.length <= MAX_ITEM_LENGTH);
+
 function isValidMatchResult(parsed) {
-  const scoreValid = typeof parsed?.score === 'number' && parsed.score >= 0 && parsed.score <= 100;
-  const keywordsValid = Array.isArray(parsed?.missingKeywords);
-  const suggestionsValid = Array.isArray(parsed?.suggestions);
-  return scoreValid && keywordsValid && suggestionsValid;
+  const scoreValid = Number.isInteger(parsed?.score) && parsed.score >= 0 && parsed.score <= 100;
+  return scoreValid && isStringList(parsed?.missingKeywords) && isStringList(parsed?.suggestions);
 }
 exports.isValidMatchResult = isValidMatchResult;
 
+// resumeText / jobDescription are validated (type and length) by middleware/validate.js before this runs.
 exports.matchResume = async (req, res) => {
   const { resumeText, jobDescription } = req.body;
-
-  if (!resumeText || !jobDescription) {
-    return res.status(400).json({
-      message: 'Please provide both a resume and a job description before running a match.',
-    });
-  }
 
   const contents = `
 <<<RESUME_START>>>

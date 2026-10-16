@@ -17,7 +17,11 @@ axiosClient.interceptors.request.use((config) => {
 axiosClient.interceptors.response.use(
   (response) => response, 
   (error) => {
-    if (error.response?.status === 401) {
+    // A 401 from login/signup means "wrong credentials", not "session expired": let the page show the message
+    // instead of reloading it.
+    const url = error.config?.url || '';
+    const isAuthAttempt = url.startsWith('/auth/login') || url.startsWith('/auth/signup');
+    if (error.response?.status === 401 && !isAuthAttempt) {
       localStorage.removeItem('token');
       window.location.href = '/login';
     }

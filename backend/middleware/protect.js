@@ -11,7 +11,7 @@ module.exports = async (req, res, next) => {
       return res.status(401).json({message:"Invalid Request"})
     }
 
-    const isVerify = jwt.verify(token,process.env.JWT_SECRET)
+    const isVerify = jwt.verify(token,process.env.JWT_SECRET,{ algorithms: ['HS256'] })
     // Never expose the password hash or full resume texts through req.user;
     // handlers that need resumes or the password re-fetch the user themselves.
     const Person = await User.findById(isVerify.id).select('-password -resumes')
