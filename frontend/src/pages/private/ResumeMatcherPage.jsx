@@ -3,7 +3,19 @@ import { getResumes } from "../../api/resumes";
 import { matchResume as matchResumeApi } from "../../api/match";
 import { Link } from "react-router-dom";
 import Textarea from "../../components/Textarea";
-import Button from "../../components/Button";
+import Select from "../../components/Select";
+import Button, { buttonClasses } from "../../components/Button";
+import PageHeader from "../../components/PageHeader";
+import EmptyState from "../../components/EmptyState";
+import Icon from "../../components/Icon";
+import SkeletonMatcher from "../../components/SkeletonMatcher";
+
+// Words describe the score so it never relies on colour alone.
+const scoreBand = (score) => {
+  if (score >= 70) return { label: "Strong overlap", bar: "bg-success" };
+  if (score >= 40) return { label: "Partial overlap", bar: "bg-status-interview" };
+  return { label: "Weak overlap", bar: "bg-danger" };
+};
 
 export default function ResumeMatcherPage() {
   const [resumes, setResumes] = useState([]);
@@ -41,11 +53,12 @@ export default function ResumeMatcherPage() {
   }, [result]);
 
   if (loading) {
-    return <div className="p-6">Loading...</div>;
+    return <SkeletonMatcher />;
   }
 
   const matchResume = async (e) => {
     e.preventDefault();
+    setErr("");
     setIsSubmitting(true);
     try {
       const selectedResume = resumes.find((r) => r._id === selectedResumeId);
@@ -66,122 +79,106 @@ export default function ResumeMatcherPage() {
     setJobDesc("");
   };
 
-  const scoreColor = (score) => {
-    if (score >= 70) return "text-green-600";
-    if (score >= 40) return "text-orange-500";
-    return "text-red-500";
-  };
-
   const jdTooShort = jobDesc.trim().length > 0 && jobDesc.trim().length < 40;
   const noResumes = resumes.length === 0;
+  const band = result ? scoreBand(result.score) : null;
 
   return (
-    <div className={`mx-auto px-6 py-10 transition-all duration-500 ${
-      result ? "max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-8 items-start" : "max-w-2xl"
-    }`}>
-      <div className="border border-gray-200 rounded-xl p-6 bg-white shadow-sm">
-        <h1 className="font-display text-3xl font-bold text-gray-900 mb-1">Resume Matcher</h1>
-        <p className="text-gray-500 mb-8">See how well a saved resume matches a job description.</p>
+    <>
+      <PageHeader
+        eyebrow="Resume matcher"
+        title="How well does it fit?"
+        description="Compare a saved resume against a job description to see which requirements it doesn't mention yet."
+      />
 
-        {err && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6">
-            {err}
-          </div>
-        )}
-
-        {noResumes ? (
-          <div className="bg-orange-50 border border-orange-200 text-orange-700 text-sm rounded-lg px-4 py-4">
-            You don't have any saved resumes yet.{" "}
-            <Link to="/resumes" className="underline font-medium">Add one first</Link>{" "}
-            to run a match.
-          </div>
-        ) : (
-          <form onSubmit={matchResume} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Resume</label>
-              <select
-                value={selectedResumeId}
-                onChange={(e) => setSelectedResumeId(e.target.value)}
-                className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {resumes.map((resume) => (
-                  <option key={resume._id} value={resume._id}>{resume.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <Textarea
-                name="text"
-                label="Job Description"
-                value={jobDesc}
-                onChange={(e) => setJobDesc(e.target.value)}
-                placeholder="Paste your job description here"
-              />
-              <div className="flex justify-between mt-1">
-                <p className={`text-xs ${jdTooShort ? "text-orange-500" : "text-gray-400"}`}>
-                  {jdTooShort
-                    ? "This looks short for a real job description — results may be inaccurate."
-                    : `${jobDesc.trim().length} characters`}
-                </p>
-              </div>
-            </div>
-
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <span className="flex items-center gap-2">
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Analyzing...
-                </span>
-              ) : (
-                "Run Match"
-              )}
-            </Button>
-          </form>
-        )}
-      </div>
-
-      {result && (
-        <div className="border border-gray-200 rounded-xl p-6 bg-white shadow-sm">
-          <div className="flex items-baseline gap-2 mb-6">
-            <span className={`text-5xl font-bold ${scoreColor(result.score)}`}>{result.score}</span>
-            <span className="text-gray-400 text-lg">/ 100 match</span>
-          </div>
-
-          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
-            Missing Keywords
-          </h3>
-          <div className="flex flex-wrap gap-2 mb-8">
-            {result.missingKeywords.length === 0 ? (
-              <p className="text-sm text-gray-400">None — good coverage.</p>
-            ) : (
-              result.missingKeywords.map((keyword) => (
-                <span key={keyword} className="text-xs bg-orange-100 text-orange-700 px-2.5 py-1 rounded-full font-medium">
-                  {keyword}
-                </span>
-              ))
-            )}
-          </div>
-
-          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
-            Suggestions
-          </h3>
-          <ul className="space-y-2 mb-6">
-            {result.suggestions.map((suggestion, index) => (
-              <li key={index} className="text-gray-700 text-sm pl-4 border-l-2 border-blue-200">
-                {suggestion}
-              </li>
-            ))}
-          </ul>
-
-          <Button onClick={handleReset} type="button" variant="closing">
-            Reset
-          </Button>
+      {err && (
+        <div role="alert" className="mb-6 flex max-w-2xl items-start gap-2 rounded-[5px] border border-danger/30 bg-danger-soft px-3 py-2.5 text-sm text-danger">
+          <Icon name="alert" className="mt-0.5 h-4 w-4 shrink-0" />
+          {err}
         </div>
       )}
-    </div>
+
+      {noResumes ? (
+        <EmptyState title="Save a resume first." description="The matcher compares one of your saved resumes with a job description.">
+          <Link to="/resumes" className={buttonClasses("primary")}>
+            Add a resume
+          </Link>
+        </EmptyState>
+      ) : (
+        <div className={`grid items-start gap-10 ${result ? "lg:grid-cols-2" : "max-w-2xl"}`}>
+          <form onSubmit={matchResume}>
+            <Select
+              label="Resume"
+              name="resume"
+              value={selectedResumeId}
+              onChange={(e) => setSelectedResumeId(e.target.value)}
+              options={resumes.map((resume) => ({ value: resume._id, label: resume.label }))}
+            />
+            <Textarea
+              name="text"
+              label="Job description"
+              value={jobDesc}
+              onChange={(e) => setJobDesc(e.target.value)}
+              placeholder="Paste the job description here"
+              rows={10}
+              className="mb-1"
+            />
+            <p className={`mb-5 font-mono text-[12px] ${jdTooShort ? "text-status-interview" : "text-ink-muted"}`} aria-live="polite">
+              {jdTooShort
+                ? "This looks short for a real job description. Results may be inaccurate."
+                : `${jobDesc.trim().length.toLocaleString("en-US")} characters`}
+            </p>
+            <Button type="submit" loading={isSubmitting} size="lg">
+              {isSubmitting ? "Analyzing…" : "Run match"}
+            </Button>
+          </form>
+
+          {result && (
+            <section aria-labelledby="match-result-heading" className="rounded-md border border-line bg-paper-raised p-6">
+              <p id="match-result-heading" className="eyebrow">
+                Match estimate
+              </p>
+              <div className="mt-2 flex items-baseline gap-3">
+                <span className="font-display text-[72px] leading-none text-ink tnum">{result.score}</span>
+                <span className="font-mono text-sm text-ink-muted">/ 100 · {band.label}</span>
+              </div>
+              <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-paper-sunk" aria-hidden="true">
+                <div className={`h-full rounded-full ${band.bar}`} style={{ width: `${result.score}%` }} />
+              </div>
+              <p className="mt-3 text-[13px] text-ink-muted">
+                An AI estimate of how much this resume's content overlaps the job description. It is not a prediction of ATS screening or hiring outcomes.
+              </p>
+
+              <h3 className="eyebrow mb-2 mt-8">Missing keywords</h3>
+              <div className="flex flex-wrap gap-2">
+                {result.missingKeywords.length === 0 ? (
+                  <p className="text-sm text-ink-muted">None. Good coverage.</p>
+                ) : (
+                  result.missingKeywords.map((keyword, index) => (
+                    <span key={`${keyword}-${index}`} className="rounded-full border border-line-strong bg-paper px-2.5 py-1 text-[12px] font-medium text-ink-soft">
+                      {keyword}
+                    </span>
+                  ))
+                )}
+              </div>
+
+              <h3 className="eyebrow mb-3 mt-8">Suggestions</h3>
+              <ol className="space-y-3">
+                {result.suggestions.map((suggestion, index) => (
+                  <li key={index} className="flex gap-3 text-sm leading-relaxed text-ink-soft">
+                    <span className="font-mono text-[12px] text-accent">{String(index + 1).padStart(2, "0")}</span>
+                    {suggestion}
+                  </li>
+                ))}
+              </ol>
+
+              <Button onClick={handleReset} type="button" variant="secondary" className="mt-8">
+                Reset
+              </Button>
+            </section>
+          )}
+        </div>
+      )}
+    </>
   );
 }

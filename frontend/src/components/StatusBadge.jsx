@@ -1,15 +1,22 @@
-const COLORS = {
-  Applied:   'bg-purple-200 text-purple-800',
-  Interview: 'bg-yellow-200 text-yellow-800',
-  Offer:     'bg-green-200 text-green-800',
-  Rejected:  'bg-red-200 text-red-800',
-  Stale:     'bg-[#D2B48C] text-[#4A2E13] animate-pulse',
-};
+import { STATUS_META } from '../lib/status';
+import Icon from './Icon';
 
+// Status is always text + a coloured dot, never colour alone.
 export default function StatusBadge({ status }) {
+  if (status === 'Stale') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-status-interview px-2 py-0.5 text-[12px] font-medium text-ink-soft">
+        <Icon name="clock" className="h-3 w-3 text-status-interview" strokeWidth={2} />
+        Follow up
+      </span>
+    );
+  }
+
+  const meta = STATUS_META[status];
   return (
-    <span className={`text-xs px-2 py-1 rounded-full font-medium ${COLORS[status] || ''}`}>
-      {status}
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper-raised px-2 py-0.5 text-[12px] font-medium text-ink-soft">
+      <span className={`h-1.5 w-1.5 rounded-full ${meta ? meta.dot : 'bg-ink-faint'}`} aria-hidden="true" />
+      {meta ? meta.label : status}
     </span>
   );
 }

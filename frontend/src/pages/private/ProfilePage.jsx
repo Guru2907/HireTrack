@@ -4,6 +4,31 @@ import { updateProfile, changePassword } from "../../api/auth";
 import { useAuth } from "../../context/AuthContext";
 import Input from "../../components/Input";
 import Button from "../../components/Button";
+import PageHeader from "../../components/PageHeader";
+import Icon from "../../components/Icon";
+
+function Notice({ tone, children }) {
+  if (!children) return null;
+  const styles = tone === "error" ? "border-danger/30 bg-danger-soft text-danger" : "border-success/30 bg-success-soft text-success";
+  return (
+    <div role={tone === "error" ? "alert" : "status"} className={`mb-5 flex items-start gap-2 rounded-[5px] border px-3 py-2.5 text-sm ${styles}`}>
+      <Icon name={tone === "error" ? "alert" : "check"} className="mt-0.5 h-4 w-4 shrink-0" />
+      {children}
+    </div>
+  );
+}
+
+function Panel({ title, description, children }) {
+  return (
+    <section className="grid gap-6 border-b border-line py-8 md:grid-cols-12">
+      <div className="md:col-span-4">
+        <h2 className="font-display text-[26px] leading-none text-ink">{title}</h2>
+        <p className="mt-2 text-sm text-ink-muted">{description}</p>
+      </div>
+      <div className="md:col-span-8 md:max-w-md">{children}</div>
+    </section>
+  );
+}
 
 export default function ProfilePage() {
   const { name, token, login, logout } = useAuth();
@@ -63,74 +88,38 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="max-w-xl mx-auto px-6 py-10 space-y-8">
-      <div>
-        <h1 className="font-display text-3xl font-bold text-gray-900">Profile</h1>
-        <p className="text-gray-500 mt-1">Manage your account details.</p>
-      </div>
+    <>
+      <PageHeader eyebrow="Account" title="Profile." description="Manage your name, password and session." />
 
-      <div className="border border-gray-200 rounded-xl p-6 bg-white shadow-sm">
-        <h2 className="font-semibold text-gray-900 mb-4">Update Name</h2>
-        {nameErr && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-4">
-            {nameErr}
-          </div>
-        )}
-        {nameSuccess && (
-          <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3 mb-4">
-            {nameSuccess}
-          </div>
-        )}
+      <Panel title="Name" description="Shown in the sidebar and on your dashboard.">
+        <Notice tone="error">{nameErr}</Notice>
+        <Notice tone="success">{nameSuccess}</Notice>
         <form onSubmit={handleNameSubmit}>
-          <Input
-            type="text"
-            name="name"
-            label="Name"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="Your name"
-          />
-          <Button type="submit" disabled={nameSubmitting}>
-            {nameSubmitting ? "Saving..." : "Save Name"}
+          <Input type="text" name="name" label="Name" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Your name" autoComplete="name" />
+          <Button type="submit" loading={nameSubmitting}>
+            {nameSubmitting ? "Saving…" : "Save name"}
           </Button>
         </form>
-      </div>
+      </Panel>
 
-      <div className="border border-gray-200 rounded-xl p-6 bg-white shadow-sm">
-        <h2 className="font-semibold text-gray-900 mb-4">Change Password</h2>
-        {pwErr && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-4">
-            {pwErr}
-          </div>
-        )}
-        {pwSuccess && (
-          <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3 mb-4">
-            {pwSuccess}
-          </div>
-        )}
+      <Panel title="Password" description="Use at least 6 characters. You'll stay signed in on this device.">
+        <Notice tone="error">{pwErr}</Notice>
+        <Notice tone="success">{pwSuccess}</Notice>
         <form onSubmit={handlePasswordSubmit}>
-          <Input
-            type="password"
-            name="currentPassword"
-            label="Current Password"
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-            placeholder="••••••••"
-          />
-          <Input
-            type="password"
-            name="newPassword"
-            label="New Password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="••••••••"
-          />
-          <Button type="submit" disabled={pwSubmitting}>
-            {pwSubmitting ? "Updating..." : "Update Password"}
+          <Input type="password" name="currentPassword" label="Current password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password" />
+          <Input type="password" name="newPassword" label="New password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" autoComplete="new-password" />
+          <Button type="submit" loading={pwSubmitting}>
+            {pwSubmitting ? "Updating…" : "Update password"}
           </Button>
         </form>
-      </div>
-      
-    </div>
+      </Panel>
+
+      <Panel title="Session" description="Sign out of HireTrack on this device.">
+        <Button variant="secondary" onClick={handleLogout}>
+          <Icon name="logout" />
+          Log out
+        </Button>
+      </Panel>
+    </>
   );
 }

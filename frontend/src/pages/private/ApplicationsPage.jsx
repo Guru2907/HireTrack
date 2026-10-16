@@ -1,193 +1,324 @@
-import { useState, useEffect } from "react";
-import {
-  getAllApplications,
-  createApplication,
-  updateApplication,
-  deleteApplication,
-} from "../../api/applications";
-import ApplicationCard from "../../components/ApplicationCard";
-import Button from "../../components/Button";
-import Input from "../../components/Input";
-import SkeletonApplicationCard from "../../components/SkeletonApplicationCard";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { getAllApplications, updateApplication, deleteApplication } from '../../api/applications';
+import PageHeader from '../../components/PageHeader';
+import Button from '../../components/Button';
+import Select from '../../components/Select';
+import Icon from '../../components/Icon';
+import EmptyState from '../../components/EmptyState';
+import ErrorState from '../../components/ErrorState';
+import ConfirmDialog from '../../components/ConfirmDialog';
+import ApplicationForm from '../../components/ApplicationForm';
+import ApplicationCard, { ApplicationRow } from '../../components/ApplicationCard';
+import SkeletonApplicationCard from '../../components/SkeletonApplicationCard';
+import { STATUSES, STATUS_META, countByStatus } from '../../lib/status';
+
+const SORTS = [
+  { value: 'updated', label: 'Recently updated' },
+  { value: 'applied', label: 'Applied date (newest)' },
+  { value: 'company', label: 'Company (A–Z)' },
+];
+
+const COMPARE = {
+  updated: (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt),
+  applied: (a, b) => new Date(b.appliedOn || b.createdAt) - new Date(a.appliedOn || a.createdAt),
+  company: (a, b) => a.company.localeCompare(b.company, undefined, { sensitivity: 'base' }),
+};
 
 export default function ApplicationsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [applications, setApplications] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [isAdding, setIsAdding] = useState(false);
-  const [editingApplication, setEditingApplication] = useState(null);
-  const [err, setErr] = useState("");
+  const [state, setState] = useState('loading'); // loading | error | ready
 
-  const [company, setCompany] = useState("");
-  const [role, setRole] = useState("");
-  const [jobUrl, setJobUrl] = useState("");
-  const [notes, setNotes] = useState("");
-  const [status, setStatus] = useState("Applied");
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const s = searchParams.get('status');
+    return STATUSES.includes(s) ? s : 'All';
+  });
+  const [sort, setSort] = useState('updated');
 
-  
-useEffect(() => {
-  const minDelay = new Promise((resolve) => setTimeout(resolve, 500));
-  Promise.all([getAllApplications(), minDelay])
-    .then(([res]) => {
-      setApplications(res.data);
-      setLoading(false);
-    })
-    .catch((err) => {
-      console.error(err);
-      setLoading(false);
-    });
-}, []);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [confirming, setConfirming] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [savingIds, setSavingIds] = useState(() => new Set());
 
+  const load = useCallback(() => {
+    setState('loading');
+    getAllApplications()
+      .then((res) => {
+        setApplications(Array.isArray(res.data) ? res.data : []);
+        setState('ready');
+      })
+      .catch(() => setState('error'));
+  }, []);
+
+  useEffect(load, [load]);
+
+  // Deep links from the dashboard: ?new=1 opens the form, ?edit=<id> opens that application.
   useEffect(() => {
-    if (editingApplication) {
-      setCompany(editingApplication.company);
-      setRole(editingApplication.role);
-      setJobUrl(editingApplication.jobUrl || "");
-      setNotes(editingApplication.notes || "");
-      setStatus(editingApplication.status);
+    if (state !== 'ready') return;
+    const wantsNew = searchParams.get('new') === '1';
+    const editId = searchParams.get('edit');
+    if (!wantsNew && !editId) return;
+
+    if (wantsNew) {
+      setEditing(null);
+      setFormOpen(true);
     } else {
-      setCompany("");
-      setRole("");
-      setJobUrl("");
-      setNotes("");
-      setStatus("Applied");
-    }
-  }, [editingApplication]);
-
-  if (loading) {
-  return (
-    <div className="max-w-4xl mx-auto px-6 py-10 space-y-4">
-      {[1, 2, 3].map((i) => <SkeletonApplicationCard key={i} />)}
-    </div>
-  );
-}
-
-  const resetForm = () => {
-    setCompany("");
-    setRole("");
-    setJobUrl("");
-    setNotes("");
-    setStatus("Applied");
-  };
-
-  const closeForms = () => {
-    resetForm();
-    setIsAdding(false);
-    setEditingApplication(null);
-  };
-
-  const createNewApplication = async (e) => {
-    e.preventDefault();
-    try {
-      if (editingApplication == null) {
-        const res = await createApplication({ company, role, jobUrl, notes, status });
-        setApplications([...applications, res.data]);
+      const target = applications.find((a) => a._id === editId);
+      if (target) {
+        setEditing(target);
+        setFormOpen(true);
       } else {
-        const res = await updateApplication(editingApplication._id, { company, role, jobUrl, notes, status });
-        setApplications(applications.map((app) => (app._id === editingApplication._id ? res.data : app)));
+        toast.error('That application could not be found.');
       }
-      closeForms();
-    } catch (err) {
-      setErr(err.response?.data?.message || "Something went wrong");
     }
+    const next = new URLSearchParams(searchParams);
+    next.delete('new');
+    next.delete('edit');
+    setSearchParams(next, { replace: true });
+  }, [state, searchParams, setSearchParams, applications]);
+
+  const counts = useMemo(() => countByStatus(applications), [applications]);
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return applications
+      .filter((a) => statusFilter === 'All' || a.status === statusFilter)
+      .filter((a) => !q || [a.company, a.role, a.notes].some((v) => v && v.toLowerCase().includes(q)))
+      .sort((a, b) => {
+        // Closed (rejected) applications always sink to the bottom.
+        const closed = (a.status === 'Rejected') - (b.status === 'Rejected');
+        return closed || COMPARE[sort](a, b);
+      });
+  }, [applications, statusFilter, query, sort]);
+
+  const chooseFilter = (value) => {
+    setStatusFilter(value);
+    const next = new URLSearchParams(searchParams);
+    if (value === 'All') next.delete('status');
+    else next.set('status', value);
+    setSearchParams(next, { replace: true });
   };
 
-  const openEditForm = (app) => {
-    setIsAdding(false);
-    setEditingApplication(editingApplication?._id === app._id ? null : app);
+  const clearFilters = () => {
+    setQuery('');
+    chooseFilter('All');
   };
 
-  const deleteEntry = async (id) => {
-    const confirmed = window.confirm("Delete this application?");
-    if (!confirmed) return;
+  const openCreate = () => {
+    setEditing(null);
+    setFormOpen(true);
+  };
+
+  const openEdit = (app) => {
+    setEditing(app);
+    setFormOpen(true);
+  };
+
+  const handleSaved = (saved, wasEdit) => {
+    setApplications((list) => (wasEdit ? list.map((a) => (a._id === saved._id ? saved : a)) : [saved, ...list]));
+    setFormOpen(false);
+    setEditing(null);
+  };
+
+  // Optimistic inline status change; reverted if the server rejects it.
+  const changeStatus = async (app, status) => {
+    if (status === app.status) return;
+    const previous = app;
+    setApplications((list) => list.map((a) => (a._id === app._id ? { ...a, status } : a)));
+    setSavingIds((ids) => new Set(ids).add(app._id));
     try {
-      await deleteApplication(id);
-      setApplications(applications.filter((app) => app._id !== id));
+      const res = await updateApplication(app._id, { status });
+      setApplications((list) => list.map((a) => (a._id === app._id ? res.data : a)));
+      toast.success(`${app.company} moved to ${status}`);
     } catch (err) {
-      setErr(err.response?.data?.message || "Something went wrong");
+      setApplications((list) => list.map((a) => (a._id === app._id ? previous : a)));
+      toast.error(err.response?.data?.message || `Couldn't update ${app.company}. Nothing was changed.`);
+    } finally {
+      setSavingIds((ids) => {
+        const next = new Set(ids);
+        next.delete(app._id);
+        return next;
+      });
     }
   };
 
-  const renderForm = () => (
-    <form
-      onSubmit={createNewApplication}
-      className="border border-gray-200 rounded-xl p-5 bg-gray-50 mb-4"
-    >
-      <Input type="text" name="company" label="Company" required value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Enter the company name" />
-      <Input type="text" name="role" label="Role" required value={role} onChange={(e) => setRole(e.target.value)} placeholder="Enter your role offered" />
-      <Input type="url" name="jobUrl" label="Job URL" value={jobUrl} onChange={(e) => setJobUrl(e.target.value)} placeholder="Enter the URL" />
-      <Input type="text" name="notes" label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Enter your notes here" />
-      <div className="mb-4">
-        <label className="block text-sm font-medium mb-1">Status</label>
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="Applied">Applied</option>
-          <option value="Interview">Interview</option>
-          <option value="Offer">Offer</option>
-          <option value="Rejected">Rejected</option>
-        </select>
-      </div>
-      <div className="flex items-center gap-4">
-        <Button type="submit">Save</Button>
-        <Button type="button" variant="closing" onClick={() => closeForms()} className="text-sm text-gray-500 hover:text-gray-700">
-          Cancel
-        </Button>
-      </div>
-    </form>
-  );
+  const confirmDelete = async () => {
+    if (!confirming) return;
+    setDeleting(true);
+    try {
+      await deleteApplication(confirming._id);
+      setApplications((list) => list.filter((a) => a._id !== confirming._id));
+      toast.success(`Deleted ${confirming.company}`);
+      setConfirming(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Delete failed. The application was kept.');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
-  const sortedApplications = applications.slice().sort((a, b) => {
-    const aRejected = a.status === "Rejected" ? 1 : 0;
-    const bRejected = b.status === "Rejected" ? 1 : 0;
-    if (aRejected !== bRejected) return aRejected - bRejected;
-    return new Date(b.updatedAt) - new Date(a.updatedAt);
+  const filtersActive = statusFilter !== 'All' || query.trim() !== '';
+  const rowProps = (app) => ({
+    app,
+    onEdit: openEdit,
+    onDelete: setConfirming,
+    onStatusChange: changeStatus,
+    saving: savingIds.has(app._id),
   });
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-10">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="font-display text-3xl font-bold text-gray-900">Applications</h1>
-        <Button
-          variant={isAdding? "closing":"primary"}
-          onClick={() => {
-            if (isAdding) {
-              closeForms();
-            } else {
-              setEditingApplication(null);
-              setIsAdding(true);
-            }
-          }}
-        >
-          {isAdding ? "Cancel" : "Add Application"}
-        </Button>
-      </div>
+    <>
+      <PageHeader
+        eyebrow="Applications"
+        title="Every role, in one ledger."
+        description="Where each application stands, when you applied, and which ones have gone quiet. Change a status right from the list."
+        actions={
+          <Button onClick={openCreate}>
+            <Icon name="plus" />
+            Log an application
+          </Button>
+        }
+      />
 
-      {err && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6">
-          {err}
-        </div>
-      )}
-
-      {isAdding && renderForm()}
-
-      {applications.length === 0 ? (
-        <div className="text-center py-20 text-gray-500">
-          No applications yet — click "Add Application" to log your first one.
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {sortedApplications.map((app) => (
-            <div key={app._id}>
-              <ApplicationCard app={app} onEdit={openEditForm} onDelete={deleteEntry} />
-              {editingApplication?._id === app._id && (
-                <div className="mt-3">{renderForm()}</div>
-              )}
-            </div>
+      {state === 'loading' && (
+        <div aria-busy="true" aria-label="Loading applications">
+          {[1, 2, 3, 4].map((i) => (
+            <SkeletonApplicationCard key={i} />
           ))}
         </div>
       )}
-    </div>
+
+      {state === 'error' && <ErrorState title="We couldn't load your applications" onRetry={load} />}
+
+      {state === 'ready' && applications.length === 0 && (
+        <EmptyState
+          eyebrow="Nothing logged yet"
+          title="Your ledger is empty."
+          description="Log the first role you've applied for. You can track its status, keep notes, and spot applications that need a follow-up."
+        >
+          <Button onClick={openCreate}>
+            <Icon name="plus" />
+            Log your first application
+          </Button>
+        </EmptyState>
+      )}
+
+      {state === 'ready' && applications.length > 0 && (
+        <>
+          <div className="mb-6 space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="relative flex-1">
+                <label htmlFor="application-search" className="sr-only">
+                  Search applications
+                </label>
+                <Icon name="search" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
+                <input
+                  id="application-search"
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search company, role or notes"
+                  className="h-10 w-full rounded-[5px] border border-line-strong bg-paper-raised pl-9 pr-3 text-[15px] text-ink placeholder:text-ink-faint transition-colors hover:border-ink-faint focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/15"
+                />
+              </div>
+              <Select
+                label="Sort by"
+                name="sort"
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                options={SORTS}
+                className="sm:w-56"
+              />
+            </div>
+
+            <div role="group" aria-label="Filter by status" className="flex flex-wrap gap-2">
+              {['All', ...STATUSES].map((value) => {
+                const active = statusFilter === value;
+                const count = value === 'All' ? applications.length : counts[value];
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => chooseFilter(value)}
+                    aria-pressed={active}
+                    className={`inline-flex h-8 items-center gap-2 rounded-full border px-3 text-[13px] font-medium transition-colors ${
+                      active ? 'border-ink bg-ink text-paper' : 'border-line bg-paper-raised text-ink-soft hover:border-line-strong hover:text-ink'
+                    }`}
+                  >
+                    {value !== 'All' && <span className={`h-1.5 w-1.5 rounded-full ${STATUS_META[value].dot}`} aria-hidden="true" />}
+                    {value}
+                    <span className={`font-mono text-[11px] tnum ${active ? 'text-paper/70' : 'text-ink-muted'}`}>{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <p className="eyebrow mb-2" aria-live="polite">
+            {filtersActive ? `Showing ${visible.length} of ${applications.length}` : `${applications.length} applications`}
+          </p>
+
+          {visible.length === 0 ? (
+            <EmptyState title="Nothing matches." description="No application fits this search and status filter.">
+              <Button variant="secondary" onClick={clearFilters}>
+                Clear filters
+              </Button>
+            </EmptyState>
+          ) : (
+            <>
+              <table className="hidden w-full border-t border-ink md:table">
+                <caption className="sr-only">Your job applications</caption>
+                <thead>
+                  <tr className="border-b border-line text-left">
+                    <th scope="col" className="eyebrow py-3 pl-1 pr-4 font-medium">Company &amp; role</th>
+                    <th scope="col" className="eyebrow py-3 pr-4 font-medium">Status</th>
+                    <th scope="col" className="eyebrow py-3 pr-4 font-medium">Applied</th>
+                    <th scope="col" className="eyebrow py-3 pr-4 font-medium">Updated</th>
+                    <th scope="col" className="py-3 pr-1">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visible.map((app) => (
+                    <ApplicationRow key={app._id} {...rowProps(app)} />
+                  ))}
+                </tbody>
+              </table>
+
+              <ul className="border-t border-ink md:hidden">
+                {visible.map((app) => (
+                  <ApplicationCard key={app._id} {...rowProps(app)} />
+                ))}
+              </ul>
+            </>
+          )}
+        </>
+      )}
+
+      <ApplicationForm
+        open={formOpen}
+        application={editing}
+        onClose={() => {
+          setFormOpen(false);
+          setEditing(null);
+        }}
+        onSaved={handleSaved}
+      />
+
+      <ConfirmDialog
+        open={Boolean(confirming)}
+        title="Delete this application?"
+        description={confirming ? `${confirming.company} · ${confirming.role}. This can't be undone.` : ''}
+        confirmLabel="Delete application"
+        busy={deleting}
+        onCancel={() => setConfirming(null)}
+        onConfirm={confirmDelete}
+      />
+    </>
   );
 }

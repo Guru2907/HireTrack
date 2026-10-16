@@ -1,15 +1,14 @@
+// One placeholder row for the applications ledger while it loads.
 export default function SkeletonApplicationCard() {
   return (
-    <div className="w-full border border-gray-200 rounded-xl p-5 bg-white shadow-sm flex justify-between items-center animate-pulse">
-      <div className="space-y-2">
-        <div className="h-4 w-32 bg-gray-200 rounded"></div>
-        <div className="h-3 w-24 bg-gray-200 rounded"></div>
+    <div className="flex animate-pulse items-center gap-6 border-b border-line py-5">
+      <div className="flex-1 space-y-2">
+        <div className="h-4 w-40 rounded bg-paper-sunk" />
+        <div className="h-3 w-56 max-w-full rounded bg-paper-sunk" />
       </div>
-      <div className="flex items-center gap-4">
-        <div className="h-5 w-16 bg-gray-200 rounded-full"></div>
-        <div className="h-3 w-8 bg-gray-200 rounded"></div>
-        <div className="h-3 w-12 bg-gray-200 rounded"></div>
-      </div>
+      <div className="h-7 w-24 rounded-full bg-paper-sunk" />
+      <div className="hidden h-3 w-20 rounded bg-paper-sunk md:block" />
+      <div className="hidden h-3 w-16 rounded bg-paper-sunk md:block" />
     </div>
   );
 }

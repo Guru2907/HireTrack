@@ -1,17 +1,21 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { buttonClasses } from '../../components/Button';
+import StatusBadge from '../../components/StatusBadge';
+import Icon from '../../components/Icon';
 
 const FEATURES = [
-  { title: "Track every application", description: "Company, role, status, notes — logged in one place, not scattered across a spreadsheet." },
-  { title: "Real dashboard analytics", description: "Pipeline health, application pace, outcome breakdown — not just a raw list." },
-  { title: "AI resume matching", description: "Paste a job description and get a real score against your saved resume, with specific gaps called out." },
-  { title: "Upload a PDF or paste text", description: "Save multiple resume versions however's easiest for you." },
+  { n: '01', title: 'Track every application', description: 'Company, role, link, notes and status, logged in one place instead of a spreadsheet.' },
+  { n: '02', title: 'See what needs a follow-up', description: 'Applications that have gone quiet for ten days are flagged, so nothing slips.' },
+  { n: '03', title: 'A dashboard built from your data', description: 'Pipeline, weekly pace and recent activity, calculated from what you actually logged.' },
+  { n: '04', title: 'Check a resume against a job', description: 'Save resume versions (paste or PDF) and get an AI estimate of keyword overlap with a job description.' },
 ];
 
-const PREVIEW_CARDS = [
-  { company: 'Google', role: 'SDE Intern', status: 'Applied', badge: 'bg-gray-200 text-gray-800' },
-  { company: 'Stripe', role: 'Backend Engineer', status: 'Interview', badge: 'bg-yellow-200 text-yellow-800' },
-  { company: 'Notion', role: 'PM Intern', status: 'Offer', badge: 'bg-green-200 text-green-800' },
+// Clearly labelled illustration for the landing page; not real data.
+const EXAMPLE_ROWS = [
+  { company: 'Northwind', role: 'Software Engineer Intern', status: 'Interview', when: 'Applied Sep 12' },
+  { company: 'Contoso', role: 'Backend Developer Intern', status: 'Applied', when: 'Applied Sep 30' },
+  { company: 'Fabrikam', role: 'Full-Stack Intern', status: 'Offer', when: 'Applied Aug 28' },
 ];
 
 export default function LandingPage() {
@@ -19,19 +23,13 @@ export default function LandingPage() {
 
   if (isLoggedIn) {
     return (
-      <div className="max-w-xl mx-auto text-center py-28 px-4">
-        <p className="text-sm font-medium text-blue-600 mb-2">Welcome back</p>
-        <h1 className="font-display text-4xl font-bold text-gray-900 mb-4">
-          Here's where things stand.
-        </h1>
-        <p className="text-gray-600 mb-8">
-          Jump back into your dashboard to see your latest application activity.
-        </p>
-        <Link
-          to="/dashboard"
-          className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-medium shadow-sm hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none transition"
-        >
-          Go to Dashboard
+      <div className="mx-auto max-w-xl px-4 py-28 text-center">
+        <p className="eyebrow mb-3">Welcome back</p>
+        <h1 className="font-display text-[48px] leading-[1.02] text-ink">Here's where things stand.</h1>
+        <p className="mb-8 mt-4 text-ink-muted">Jump back into your dashboard to see your latest application activity.</p>
+        <Link to="/dashboard" className={buttonClasses('primary', 'lg')}>
+          Go to dashboard
+          <Icon name="arrowRight" />
         </Link>
       </div>
     );
@@ -39,70 +37,71 @@ export default function LandingPage() {
 
   return (
     <div>
-      <section className="bg-gradient-to-b from-blue-50 to-white">
-        <div className="max-w-6xl mx-auto px-6 py-24 grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-          <div>
-            <p className="text-sm font-medium text-blue-600 mb-3 tracking-wide">
-              Built for the job hunt
-            </p>
-            <h1 className="font-display text-5xl font-bold text-gray-900 leading-tight mb-6">
-              Every application.
-              <br />
-              One dashboard you'll actually check.
-            </h1>
-            <p className="text-lg text-gray-600 mb-8 max-w-md">
-              Stop losing track in a spreadsheet. Log applications, watch status
-              update in real time, and get an AI check on your resume before you submit.
-            </p>
-            <div className="flex gap-4">
-              <Link to="/signup" className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium shadow-sm hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none transition">
-                Get Started
-              </Link>
-              <Link to="/login" className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-medium hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none transition">
-                Log In
-              </Link>
-            </div>
+      <section className="mx-auto grid max-w-6xl items-center gap-14 px-4 py-20 sm:px-6 md:grid-cols-12 md:py-28">
+        <div className="md:col-span-7">
+          <p className="eyebrow mb-5">A ledger for the job hunt</p>
+          <h1 className="font-display text-[56px] leading-[0.98] tracking-[-0.015em] text-ink sm:text-[76px]">
+            Every application.
+            <br />
+            <span className="italic text-accent">Nothing forgotten.</span>
+          </h1>
+          <p className="mt-6 max-w-lg text-[17px] leading-relaxed text-ink-soft">
+            Log where you've applied, see which applications have gone quiet, and check how well a resume fits a job before you send it.
+          </p>
+          <div className="mt-9 flex flex-wrap gap-3">
+            <Link to="/signup" className={buttonClasses('primary', 'lg')}>
+              Start tracking, free
+            </Link>
+            <Link to="/login" className={buttonClasses('secondary', 'lg')}>
+              Log in
+            </Link>
           </div>
+        </div>
 
-          <div className="space-y-3">
-            {PREVIEW_CARDS.map((card) => (
-              <div key={card.company} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex justify-between items-center">
-                <div>
-                  <p className="font-semibold text-gray-900">{card.company}</p>
-                  <p className="text-sm text-gray-500">{card.role}</p>
-                </div>
-                <span className={`text-xs px-3 py-1 rounded-full font-medium ${card.badge}`}>
-                  {card.status}
-                </span>
+        <figure className="md:col-span-5">
+          <div className="rounded-md border border-line bg-paper-raised">
+            <div className="flex items-center justify-between border-b border-line px-5 py-3">
+              <span className="eyebrow">Applications</span>
+              <span className="eyebrow">3 entries</span>
+            </div>
+            <ul className="divide-y divide-line">
+              {EXAMPLE_ROWS.map((row) => (
+                <li key={row.company} className="flex items-center justify-between gap-4 px-5 py-4">
+                  <div className="min-w-0">
+                    <p className="truncate text-[15px] font-medium text-ink">{row.company}</p>
+                    <p className="truncate text-[13px] text-ink-muted">{row.role}</p>
+                    <p className="mt-1 font-mono text-[11px] text-ink-muted">{row.when}</p>
+                  </div>
+                  <StatusBadge status={row.status} />
+                </li>
+              ))}
+            </ul>
+          </div>
+          
+        </figure>
+      </section>
+
+      <section className="border-y border-line bg-paper-raised">
+        <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+          <h2 className="mb-12 max-w-xl font-display text-[40px] leading-[1.05] text-ink">What's actually in it.</h2>
+          <div className="grid gap-px overflow-hidden rounded-md border border-line bg-line sm:grid-cols-2">
+            {FEATURES.map((feature) => (
+              <div key={feature.n} className="bg-paper-raised p-7">
+                <span className="font-mono text-[12px] text-accent">{feature.n}</span>
+                <h3 className="mt-3 text-[17px] font-semibold text-ink">{feature.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-ink-muted">{feature.description}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="max-w-6xl mx-auto px-6 py-24">
-        <h2 className="font-display text-3xl font-bold text-gray-900 mb-12 text-center">
-          What's actually in it
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-          {FEATURES.map((feature) => (
-            <div key={feature.title} className="border-l-2 border-blue-600 pl-5">
-              <h3 className="font-semibold text-gray-900 mb-2">{feature.title}</h3>
-              <p className="text-sm text-gray-600">{feature.description}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="max-w-6xl mx-auto px-6 pb-24">
-        <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl px-10 py-14 text-center">
-          <h2 className="font-display text-3xl font-bold text-white mb-4">
-            Stop tracking applications in a spreadsheet.
-          </h2>
-          <Link to="/signup" className="inline-block bg-white text-blue-600 px-6 py-3 rounded-lg font-medium shadow-sm hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none transition">
-            Get Started — it's free
-          </Link>
-        </div>
+      <section className="mx-auto max-w-6xl px-4 py-20 text-center sm:px-6">
+        <h2 className="font-display text-[44px] leading-[1.05] text-ink">Stop tracking applications in a spreadsheet.</h2>
+        <Link to="/signup" className={buttonClasses('primary', 'lg', 'mt-8')}>
+          Create a free account
+          <Icon name="arrowRight" />
+        </Link>
       </section>
     </div>
   );
