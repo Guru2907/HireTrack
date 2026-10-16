@@ -1,5 +1,4 @@
-const { GoogleGenAI } = require('@google/genai');
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const { createMatcher } = require('../services/aiMatcher');
 
 const SYSTEM_INSTRUCTION = `
 You are a resume screening assistant helping a candidate see how well their resume matches a specific job posting.
@@ -23,22 +22,49 @@ Rules:
 - suggestions should contain exactly 3 items, except in the two special cases described above.
 `;
 
-// Checks the model's reply before the frontend renders it: an integer score and arrays of plain strings.
-// (A non-string array item would otherwise crash the React results panel.)
+// Validates the model's reply before the frontend renders it.
 const MAX_LIST_ITEMS = 100;
 const MAX_ITEM_LENGTH = 1000;
+
 const isStringList = (value) =>
   Array.isArray(value) &&
   value.length <= MAX_LIST_ITEMS &&
-  value.every((item) => typeof item === 'string' && item.length <= MAX_ITEM_LENGTH);
+  value.every(
+    (item) =>
+      typeof item === 'string' &&
+      item.length <= MAX_ITEM_LENGTH
+  );
 
 function isValidMatchResult(parsed) {
-  const scoreValid = Number.isInteger(parsed?.score) && parsed.score >= 0 && parsed.score <= 100;
-  return scoreValid && isStringList(parsed?.missingKeywords) && isStringList(parsed?.suggestions);
+  const scoreValid =
+    Number.isInteger(parsed?.score) &&
+    parsed.score >= 0 &&
+    parsed.score <= 100;
+
+  return (
+    scoreValid &&
+    isStringList(parsed?.missingKeywords) &&
+    isStringList(parsed?.suggestions)
+  );
 }
+
 exports.isValidMatchResult = isValidMatchResult;
 
-// resumeText / jobDescription are validated (type and length) by middleware/validate.js before this runs.
+// Gemini first, then Groq automatically, with bounded retries (see services/aiMatcher.js).
+// Providers are read from the environment on every request, so a missing key disables only that provider.
+const analyze = createMatcher({ systemInstruction: SYSTEM_INSTRUCTION, validate: isValidMatchResult });
+
+// User-facing text only: no provider names, upstream messages or configuration details.
+const FAILURE_RESPONSES = {
+  AI_TEMPORARILY_UNAVAILABLE: [503, 'The AI matching service is temporarily unavailable. Please try again in a moment.'],
+  AI_RATE_LIMITED: [503, 'The AI matching service is receiving too many requests. Please wait a minute and try again.'],
+  AI_QUOTA_EXHAUSTED: [503, 'The AI matching service has reached its usage limit for now. Please try again later.'],
+  AI_CONFIGURATION_ERROR: [503, 'The AI matching service needs configuration attention. Please try again later.'],
+  AI_REQUEST_FAILED: [503, 'The AI matching service could not process this request. Please try again.'],
+  AI_INVALID_OUTPUT: [502, 'The AI returned a response in an unexpected format. Please try again.'],
+};
+
+// resumeText / jobDescription are validated by middleware/validate.js.
 exports.matchResume = async (req, res) => {
   const { resumeText, jobDescription } = req.body;
 
@@ -52,38 +78,13 @@ ${jobDescription}
 <<<JOB_DESCRIPTION_END>>>
 `;
 
-  let rawText;
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.6-flash',
-      contents,
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-      },
-    });
-    rawText = response.text.trim();
-    rawText = rawText.replace(/^```json\s*/i, '').replace(/```$/, '').trim();
-  } catch (err) {
-    return res.status(503).json({
-      message: 'The AI matching service is temporarily unavailable. Please try again in a moment.',
-    });
+  const outcome = await analyze(contents);
+
+  if (!outcome.ok) {
+    const [status, message] = FAILURE_RESPONSES[outcome.code] || FAILURE_RESPONSES.AI_REQUEST_FAILED;
+    return res.status(status).json({ message, errorCode: outcome.code });
   }
 
-  let parsed;
-  try {
-    parsed = JSON.parse(rawText);
-  } catch (err) {
-    return res.status(502).json({
-      message: 'The AI returned an unexpected response. Please try again.',
-    });
-  }
-
-  // Replaces the old three separate ...Valid lines + if check
-  if (!isValidMatchResult(parsed)) {
-    return res.status(502).json({
-      message: 'The AI returned a response in an unexpected format. Please try again.',
-    });
-  }
-
-  res.status(200).json(parsed);
+  // `provider` ("primary" | "backup") is additive; the existing three fields are unchanged.
+  return res.status(200).json({ ...outcome.result, provider: outcome.provider });
 };

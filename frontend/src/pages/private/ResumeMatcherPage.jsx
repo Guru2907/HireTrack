@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getResumes } from "../../api/resumes";
 import { matchResume as matchResumeApi } from "../../api/match";
+import { describeMatchError, usedBackupProvider } from "../../lib/matchErrors";
 import { Link } from "react-router-dom";
 import Textarea from "../../components/Textarea";
 import Select from "../../components/Select";
@@ -25,6 +26,10 @@ export default function ResumeMatcherPage() {
   const [err, setErr] = useState("");
   const [result, setResult] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Match failures are kept apart from resume-loading errors so they can offer a Retry.
+  const [matchError, setMatchError] = useState(null);
+  // Blocks a second submit before React has re-rendered the disabled button.
+  const inFlight = useRef(false);
 
   useEffect(() => {
     getResumes()
@@ -56,26 +61,37 @@ export default function ResumeMatcherPage() {
     return <SkeletonMatcher />;
   }
 
-  const matchResume = async (e) => {
-    e.preventDefault();
-    setErr("");
+  // One click = one request. Any retrying or switching to the backup AI happens on the server.
+  // The selected resume and job description are never cleared here, so a failure keeps them.
+  const runMatch = async () => {
+    const selectedResume = resumes.find((r) => r._id === selectedResumeId);
+    if (inFlight.current || !selectedResume) return;
+    inFlight.current = true;
+    setMatchError(null);
+    setResult(null);
     setIsSubmitting(true);
     try {
-      const selectedResume = resumes.find((r) => r._id === selectedResumeId);
       const res = await matchResumeApi({
         resumeText: selectedResume.text,
         jobDescription: jobDesc,
       });
       setResult(res.data);
-    } catch (err) {
-      setErr(err.response?.data?.message || "Something went wrong");
+    } catch (error) {
+      setMatchError(describeMatchError(error));
     } finally {
+      inFlight.current = false;
       setIsSubmitting(false);
     }
   };
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    runMatch();
+  };
+
   const handleReset = () => {
     setResult(null);
+    setMatchError(null);
     setJobDesc("");
   };
 
@@ -106,7 +122,7 @@ export default function ResumeMatcherPage() {
         </EmptyState>
       ) : (
         <div className={`grid items-start gap-10 ${result ? "lg:grid-cols-2" : "max-w-2xl"}`}>
-          <form onSubmit={matchResume}>
+          <form onSubmit={handleSubmit}>
             <Select
               label="Resume"
               name="resume"
@@ -129,8 +145,26 @@ export default function ResumeMatcherPage() {
                 : `${jobDesc.trim().length.toLocaleString("en-US")} characters`}
             </p>
             <Button type="submit" loading={isSubmitting} size="lg">
-              {isSubmitting ? "Analyzing…" : "Run match"}
+              {isSubmitting ? "Analyzing your resume…" : "Run match"}
             </Button>
+            <p className="mt-3 min-h-[1.25rem] text-[13px] text-ink-muted" aria-live="polite">
+              {isSubmitting && "If the AI service is busy, HireTrack retries and can switch to a backup service automatically. This can take up to a minute."}
+            </p>
+
+            {matchError && (
+              <div role="alert" className="mt-4 flex items-start gap-2 rounded-[5px] border border-danger/30 bg-danger-soft px-3 py-2.5 text-sm text-danger">
+                <Icon name="alert" className="mt-0.5 h-4 w-4 shrink-0" />
+                <div className="flex-1">
+                  <p>{matchError.message}</p>
+                  {matchError.retryable && (
+                    <Button type="button" variant="secondary" size="sm" onClick={runMatch} disabled={isSubmitting} className="mt-3">
+                      <Icon name="refresh" className="h-3.5 w-3.5" />
+                      Try again
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
           </form>
 
           {result && (
@@ -148,6 +182,9 @@ export default function ResumeMatcherPage() {
               <p className="mt-3 text-[13px] text-ink-muted">
                 An AI estimate of how much this resume's content overlaps the job description. It is not a prediction of ATS screening or hiring outcomes.
               </p>
+              {usedBackupProvider(result) && (
+                <p className="mt-2 font-mono text-[12px] text-ink-muted">Analysis complete using the backup AI service.</p>
+              )}
 
               <h3 className="eyebrow mb-2 mt-8">Missing keywords</h3>
               <div className="flex flex-wrap gap-2">
