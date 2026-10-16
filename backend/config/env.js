@@ -47,7 +47,7 @@ function validateEnv(env = process.env) {
   } catch (err) {
     errors.push(err.message);
   }
-  for (const name of ['AUTH_LOGIN_MAX', 'AUTH_SIGNUP_MAX']) {
+  for (const name of ['AUTH_LOGIN_MAX', 'AUTH_SIGNUP_MAX', 'AUTH_PASSWORD_MAX']) {
     const problem = positiveIntOrUndefined(env, name);
     if (problem) errors.push(problem);
   }

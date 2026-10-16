@@ -42,6 +42,8 @@ describe('validateEnv', () => {
     expect(validateEnv({ ...goodEnv, PORT: 'abc' }).errors).toEqual(expect.arrayContaining([expect.stringMatching(/PORT/)]));
     expect(validateEnv({ ...goodEnv, AUTH_LOGIN_MAX: '0' }).errors.join()).toMatch(/AUTH_LOGIN_MAX/);
     expect(validateEnv({ ...goodEnv, AUTH_SIGNUP_MAX: 'lots' }).errors.join()).toMatch(/AUTH_SIGNUP_MAX/);
+    expect(validateEnv({ ...goodEnv, AUTH_PASSWORD_MAX: '-1' }).errors.join()).toMatch(/AUTH_PASSWORD_MAX/);
+    expect(validateEnv({ ...goodEnv, AUTH_PASSWORD_MAX: '5' }).errors).toEqual([]);
   });
 });
 

@@ -63,4 +63,30 @@ describe('protect middleware', () => {
     expect(res.status).toHaveBeenCalledWith(401);
     expect(next).not.toHaveBeenCalled();
   });
+
+  // A 401 makes the frontend log the user out, so an outage must surface as a server error instead.
+  test('passes a database failure to the error handler instead of answering 401', async () => {
+    req.headers.authorization = 'Bearer validtoken';
+    jwt.verify.mockReturnValue({ id: 'user123' });
+    const dbError = Object.assign(new Error('connection refused'), { name: 'MongoNetworkError' });
+    User.findById.mockReturnValue({ select: jest.fn().mockRejectedValue(dbError) });
+
+    await protect(req, res, next);
+
+    expect(res.status).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledWith(dbError);
+    expect(req.user).toBeUndefined();
+  });
+
+  test('a token carrying a malformed user id is still a 401', async () => {
+    req.headers.authorization = 'Bearer validtoken';
+    jwt.verify.mockReturnValue({ id: 'not-an-object-id' });
+    const castError = Object.assign(new Error('Cast to ObjectId failed'), { name: 'CastError' });
+    User.findById.mockReturnValue({ select: jest.fn().mockRejectedValue(castError) });
+
+    await protect(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(next).not.toHaveBeenCalled();
+  });
 });

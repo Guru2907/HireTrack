@@ -12,7 +12,7 @@ const createAuthRouter = require('./routes/auth');
 // Mongoose wraps it in $eq instead of executing it.
 mongoose.set('sanitizeFilter', true);
 
-// options.authLimiters lets tests supply small limits ({ loginLimiter, signupLimiter }).
+// options.authLimiters lets tests supply small limits ({ loginLimiter, signupLimiter, passwordLimiter }).
 function createApp(options = {}) {
   const app = express();
 

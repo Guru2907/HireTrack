@@ -28,4 +28,17 @@ const createSignupLimiter = ({ windowMs = 60 * 60 * 1000, max = positiveInt(proc
     message: tooMany,
   });
 
-module.exports = { createLoginLimiter, createSignupLimiter };
+// Counts failed password changes per signed-in user (runs after `protect`), so a stolen token cannot be used
+// to guess the current password. Keyed on the user id rather than the IP, like the match limiter.
+const createPasswordLimiter = ({ windowMs = 15 * 60 * 1000, max = positiveInt(process.env.AUTH_PASSWORD_MAX, 5) } = {}) =>
+  rateLimit({
+    windowMs,
+    limit: max,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skipSuccessfulRequests: true,
+    keyGenerator: (req) => req.user._id.toString(),
+    message: tooMany,
+  });
+
+module.exports = { createLoginLimiter, createSignupLimiter, createPasswordLimiter };

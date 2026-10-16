@@ -7,4 +7,5 @@ delete process.env.MONGO_URI;
 // its own app instances with small limits.
 process.env.AUTH_LOGIN_MAX = '1000';
 process.env.AUTH_SIGNUP_MAX = '1000';
+process.env.AUTH_PASSWORD_MAX = '1000';
 delete process.env.TRUST_PROXY;

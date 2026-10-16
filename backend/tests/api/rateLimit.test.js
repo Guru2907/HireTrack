@@ -88,6 +88,62 @@ describe('signup rate limiting', () => {
   });
 });
 
+describe('password-change rate limiting (per signed-in user, failed attempts only)', () => {
+  const { createLoginLimiter, createSignupLimiter, createPasswordLimiter } = require('../../middleware/authLimiter');
+  const appWithPasswordLimit = (max) =>
+    createApp({
+      authLimiters: {
+        loginLimiter: createLoginLimiter({ max: 100 }),
+        signupLimiter: createSignupLimiter({ max: 100 }),
+        passwordLimiter: createPasswordLimiter({ max }),
+      },
+    });
+  const signup = async (app, email) => (await request(app).post('/api/auth/signup').send({ ...ACCOUNT, email })).body.token;
+  const changePassword = (app, token, currentPassword, newPassword = 'new-password-456') =>
+    request(app).put('/api/auth/password').set('Authorization', `Bearer ${token}`).send({ currentPassword, newPassword });
+
+  test('blocks guessing the current password after the limit, even with the right one', async () => {
+    const app = appWithPasswordLimit(3);
+    const token = await signup(app, 'pw1@example.com');
+
+    for (let i = 0; i < 3; i += 1) expect((await changePassword(app, token, 'wrong-guess')).status).toBe(400);
+    const blocked = await changePassword(app, token, ACCOUNT.password);
+
+    expect(blocked.status).toBe(429);
+    expect(blocked.body).toEqual({ message: 'Too many attempts. Please try again later.' });
+    // The password was not changed while blocked.
+    const login = await request(app).post('/api/auth/login').send({ email: 'pw1@example.com', password: ACCOUNT.password });
+    expect(login.status).toBe(201);
+  });
+
+  test('successful changes are not counted', async () => {
+    const app = appWithPasswordLimit(1);
+    const token = await signup(app, 'pw2@example.com');
+    let current = ACCOUNT.password;
+
+    for (let i = 0; i < 4; i += 1) {
+      const next = `rotated-password-${i}`;
+      expect((await changePassword(app, token, current, next)).status).toBe(200);
+      current = next;
+    }
+  });
+
+  test('the limit is per user: one user being blocked does not affect another', async () => {
+    const app = appWithPasswordLimit(1);
+    const attacker = await signup(app, 'pw3@example.com');
+    const victim = await signup(app, 'pw4@example.com');
+
+    await changePassword(app, attacker, 'wrong-guess');
+    expect((await changePassword(app, attacker, 'wrong-guess')).status).toBe(429);
+    expect((await changePassword(app, victim, ACCOUNT.password)).status).toBe(200);
+  });
+
+  test('requests without a valid token are rejected by auth before the limiter', async () => {
+    const app = appWithPasswordLimit(1);
+    for (let i = 0; i < 3; i += 1) expect((await changePassword(app, 'not-a-token', 'x')).status).toBe(401);
+  });
+});
+
 describe('proxy / X-Forwarded-For handling', () => {
   // express-rate-limit prints a configuration warning when X-Forwarded-For arrives without "trust proxy".
   beforeEach(() => jest.spyOn(console, 'error').mockImplementation(() => {}));
