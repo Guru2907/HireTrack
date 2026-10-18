@@ -97,7 +97,7 @@ Never commit real values. Both `.env` files are git-ignored.
 | `JWT_SECRET` | yes | `replace_with_a_long_random_string` | Signs session tokens (use 16+ random characters) |
 | `PORT` | yes | `5000` | API port |
 | `CLIENT_URL` | recommended | `http://localhost:5173` | Allowed CORS origin (the frontend URL) |
-| `GEMINI_API_KEY` | for the matcher | `your_gemini_api_key` | Primary AI provider |
+| `GEMINI_API_KEY` | recommended | `your_gemini_api_key` | Primary AI provider. The matcher needs at least one of `GEMINI_API_KEY` or `GROQ_API_KEY` |
 | `GROQ_API_KEY` | optional | `your_groq_api_key_here` | Backup AI provider; leave empty to disable the fallback |
 | `GEMINI_MODEL` | optional | `gemini-3.8-flash` | Overrides the Gemini model |
 | `GROQ_MODEL` | optional | `openai/gpt-oss-20b` | Overrides the Groq model |
